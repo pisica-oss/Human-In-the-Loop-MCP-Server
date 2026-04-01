@@ -4,10 +4,11 @@
 import concurrent.futures
 import os
 import platform
-import secrets
 import threading
 import tkinter as tk
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
+
+from pydantic import Field
 
 os.environ.setdefault("FASTMCP_LOG_LEVEL", "WARNING")
 from fastmcp import FastMCP
@@ -129,19 +130,20 @@ class _MultilineDialog:
 
 
 @mcp.tool()
-async def get_multiline_input() -> Dict[str, Any]:
+async def get_multiline_input(
+    session_tag: Annotated[str, Field(description="Generate a unique memorable word (e.g. 'tiger', 'comet', 'ruby'). Shown in the window title so the user can identify this dialog.")],
+) -> Dict[str, Any]:
     """Ask the user for multi-line text input via a GUI dialog. Use this to get the next task or feedback."""
     if not _ensure_gui():
         return {"success": False, "error": "GUI not available"}
 
-    tag = secrets.token_hex(2).upper()
-    title = f"[#{tag}] Input Needed"
+    title = f"[{session_tag}] Input Needed"
     with concurrent.futures.ThreadPoolExecutor() as pool:
         result = pool.submit(_show_dialog, title, "What would you like me to do next?", "").result(timeout=600)
 
     if result is not None:
-        return {"success": True, "tag": tag, "user_input": result}
-    return {"success": False, "tag": tag, "cancelled": True}
+        return {"success": True, "user_input": result}
+    return {"success": False, "cancelled": True}
 
 
 def main():
